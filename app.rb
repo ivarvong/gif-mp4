@@ -9,17 +9,8 @@ end
 
 def convert(gif_file, mp4_file)
 	`ffmpeg -f gif -i #{gif_file} #{mp4_file}`
-	mp4_file
 rescue
 	nil
-end
-
-def download_gif(url)
-	tmp_file = Tempfile.new('gif').path + ".gif"
-	File.open(tmp_file, 'wb') do |f|
-		f.write(HTTParty.get(url).body)
-	end
-	tmp_file
 end
 
 get '/mp4' do
@@ -27,14 +18,17 @@ get '/mp4' do
 	url = params['url']
 	puts "Converting #{url}"
 
-	gif_file = download_gif(url)
+	gif_file = Tempfile.new('gif').path + ".gif"
+	File.open(gif_file, 'wb') do |f|
+		f.write(HTTParty.get(url).body)
+	end
 	mp4_file = Tempfile.new('mp4').path + ".mp4"
 
 	if convert(gif_file, mp4_file)
 		headers "Cache-Control" => "public, max-age=300"
 		headers "X-Convert-Time" => "#{(Time.now.utc.to_f - start_time).round(2)}"
 		content_type "video/mp4"
-		File.open(mp4_file).read
+		File.open(mp4_file, 'rb').read
 	else
 		status_code 500
 		content_type "text/plain"
